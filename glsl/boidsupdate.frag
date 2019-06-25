@@ -10,6 +10,8 @@ uniform vec2 scale;
 uniform float random;
 uniform float noise;
 uniform float interDist;
+uniform float boidVel;
+uniform bool boundary;
 uniform vec2 worldsize;
 varying vec2 index;
 
@@ -48,20 +50,21 @@ void updateVelocity(inout vec2 p, inout vec2 v) {
 
             if (distance(p,op) < interDist){
                 repl -= (op - p);
-                avg_v += ov;
-                avg_p += op;
+                avg_v += ov; // calc avg velocity
+                avg_p += op; // calc centre of mass
                 N += 1.;
             }
         }
     }
 
-    repl.x += exp(-0.1*p.x)*normalize(-p.x);
-    repl.y += exp(-0.1*p.y)*normalize(-p.y);
-    repl.x += exp(0.1*(p.x-worldsize.x))*normalize(worldsize.x-p.x);
-    repl.y += exp(0.1*(p.y-worldsize.y))*normalize(worldsize.y-p.y);
-
-    //repl += (worldsize/2.-p);
-
+    //Add a boundary
+    if (boundary){
+        repl.x += 0.1*N*exp(-0.1*p.x)*normalize(-p.x);
+        repl.y += 0.1*N*exp(-0.1*p.y)*normalize(-p.y);
+        repl.x += 0.1*N*exp(0.1*(p.x-worldsize.x))*normalize(worldsize.x-p.x);
+        repl.y += 0.1*N*exp(0.1*(p.y-worldsize.y))*normalize(worldsize.y-p.y);
+    }
+    
     avg_v /= N;
     avg_p /= N;
     repl /= N;
@@ -70,7 +73,7 @@ void updateVelocity(inout vec2 p, inout vec2 v) {
     vec2 v2 = 1.01*repl;
     vec2 v1 = (avg_p-p); 
     v += v1+v2+v3;
-    v = 5.*normalize(v)+ noise*vec2(rand.x-0.5,rand.y-0.5);;
+    v = boidVel*normalize(v)+ noise*vec2(rand.x-0.5,rand.y-0.5);;
 
 }
 

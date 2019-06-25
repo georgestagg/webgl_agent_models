@@ -26,6 +26,8 @@ function Particles(canvas, nparticles) {
     this.prefVel = 5.0;
     this.replSigma = 30;
     this.interDist = 80;
+    this.boidVel = 5;
+    this.boundary = true;
     this.noise = 0.5;
     this.R0 = 0.1;
     this.G0 = 0.8;
@@ -269,6 +271,8 @@ Particles.prototype.step = function() {
             .uniform('scale', this.scale)
             .uniform('noise',this.noise)
             .uniform('interDist',this.interDist)
+            .uniform('boidVel',this.boidVel)
+            .uniform('boundary',this.boundary)
             .uniform('worldsize', this.worldsize)
             .uniformi('derivative', 0)
             .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
@@ -382,6 +386,8 @@ pfm.add(am, 'enableGoal');
 pfm.add(am, 'goalType', ['followMouse', 'center', 'circle']);
 var bm = gui.addFolder('Boids Model');
 bm.add(am, 'interDist',0,500).step(5);
+bm.add(am, 'boidVel',0,15).step(0.5);
+bm.add(am, 'boundary');
 
 gui.add(am, 'model', ['Pedestrian Force Model', 'Boids']);
 gui.add(am, 'pointSize',1,10).step(0.5);
