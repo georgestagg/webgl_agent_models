@@ -22,8 +22,10 @@ function Particles(canvas, nparticles) {
 
     /* Simulation parameters. */
     this.running = false;
+    this.model = 'Boids';
     this.prefVel = 5.0;
     this.replSigma = 30;
+    this.interDist = 80;
     this.noise = 0.5;
     this.R0 = 0.1;
     this.G0 = 0.8;
@@ -37,7 +39,8 @@ function Particles(canvas, nparticles) {
     }
 
     this.programs = {
-        update:  igloo.program('glsl/quad.vert', 'glsl/update.frag'),
+        pfmupdate:  igloo.program('glsl/quad.vert', 'glsl/update.frag'),
+        boidsupdate:  igloo.program('glsl/quad.vert', 'glsl/boidsupdate.frag'),
         draw:    igloo.program('glsl/draw.vert', 'glsl/draw.frag')
     };
     this.buffers = {
@@ -107,8 +110,8 @@ Particles.prototype.initTextures = function() {
             var i = y * tw * 4 + x * 4,
                 px = Particles.encode(Math.random() * w, s[0]),
                 py = Particles.encode(Math.random() * h, s[0]),
-                vx = Particles.encode(Math.random() * 10 - 5, s[1]),
-                vy = Particles.encode(Math.random() * 10 - 5, s[1]);
+                vx = Particles.encode(Math.random() * 1 - 0.5, s[1]),
+                vy = Particles.encode(Math.random() * 1 - 0.5, s[1]);
             rgbaP[i + 0] = px[0];
             rgbaP[i + 1] = px[1];
             rgbaP[i + 2] = py[0];
@@ -235,28 +238,45 @@ Particles.prototype.step = function() {
     this.textures.v0.bind(1);
     this.textures.rand.bind(2);
     gl.viewport(0, 0, this.statesize[0], this.statesize[1]);
-    this.programs.update.use()
-        .attrib('quad', this.buffers.quad, 2)
-        .uniformi('position', 0)
-        .uniformi('velocity', 1)
-        .uniformi('rand', 2)
-        .uniform('scale', this.scale)
-        .uniform('random', Math.random() * 2.0 - 1.0)
-        .uniform('goal', this.goal)
-        .uniform('enableGoal', this.enableGoal)
-        .uniform('prefVel', this.prefVel)
-        .uniform('R0', this.R0)
-        .uniform('G0', this.G0)
-        .uniform('replSigma',this.replSigma)
-        .uniform('noise',this.noise)
-        .uniform('worldsize', this.worldsize)
-        .uniformi('derivative', 0)
-        .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
-    this.framebuffers.step.attach(this.textures.v1);
-    this.programs.update
-        .uniformi('derivative', 1)
-        .uniform('random', Math.random() * 2.0 - 1.0)
-        .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
+
+    if (this.model == 'Pedestrian Force Model'){
+        this.programs.pfmupdate.use()
+            .attrib('quad', this.buffers.quad, 2)
+            .uniformi('position', 0)
+            .uniformi('velocity', 1)
+            .uniformi('rand', 2)
+            .uniform('scale', this.scale)
+            .uniform('goal', this.goal)
+            .uniform('enableGoal', this.enableGoal)
+            .uniform('prefVel', this.prefVel)
+            .uniform('R0', this.R0)
+            .uniform('G0', this.G0)
+            .uniform('replSigma',this.replSigma)
+            .uniform('noise',this.noise)
+            .uniform('worldsize', this.worldsize)
+            .uniformi('derivative', 0)
+            .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
+        this.framebuffers.step.attach(this.textures.v1);
+        this.programs.pfmupdate
+            .uniformi('derivative', 1)
+            .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
+    } else if (this.model == 'Boids'){
+        this.programs.boidsupdate.use()
+            .attrib('quad', this.buffers.quad, 2)
+            .uniformi('position', 0)
+            .uniformi('velocity', 1)
+            .uniformi('rand', 2)
+            .uniform('scale', this.scale)
+            .uniform('noise',this.noise)
+            .uniform('interDist',this.interDist)
+            .uniform('worldsize', this.worldsize)
+            .uniformi('derivative', 0)
+            .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
+        this.framebuffers.step.attach(this.textures.v1);
+        this.programs.boidsupdate
+            .uniformi('derivative', 1)
+            .draw(gl.TRIANGLE_STRIP, Igloo.QUAD2.length / 2);
+    }
     this.swap();
     return this;
 };
@@ -358,8 +378,11 @@ pfm.add(am, 'prefVel',0,15).step(0.5);
 pfm.add(am, 'replSigma',0,100).step(5);
 pfm.add(am, 'R0',0,0.5).step(0.01);
 pfm.add(am, 'G0',0,1.5).step(0.05);
-pfm.open();
-gui.add(am, 'enableGoal');
-gui.add(am, 'goalType', ['followMouse', 'center', 'circle']);
+pfm.add(am, 'enableGoal');
+pfm.add(am, 'goalType', ['followMouse', 'center', 'circle']);
+var bm = gui.addFolder('Boids Model');
+bm.add(am, 'interDist',0,500).step(5);
+
+gui.add(am, 'model', ['Pedestrian Force Model', 'Boids']);
 gui.add(am, 'pointSize',1,10).step(0.5);
 gui.add(am, 'noise',0,10).step(0.5);
